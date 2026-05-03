@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polynomial Behavior Explorer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f1117;--surface:#181b24;--surface2:#1e2230;--border:#2a2e3d;--text:#e4e6ed;--text-muted:#8b90a0;--accent:#6c9fff;--accent-glow:rgba(108,159,255,0.15);--green:#5de8a0;--green-glow:rgba(93,232,160,0.12);--orange:#ffb066;--orange-glow:rgba(255,176,102,0.12);--red:#ff6b8a;--red-glow:rgba(255,107,138,0.12);--purple:#b18cff;--purple-glow:rgba(177,140,255,0.12);--yellow:#ffe566;--neon:#39ff14}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow:hidden}
+.tab-bar{display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 32px;background:var(--surface)}
+.tab{padding:14px 22px;font-size:13px;font-weight:600;color:var(--text-muted);cursor:pointer;border-bottom:3px solid transparent;transition:all .25s;user-select:none}
+.tab:hover{color:var(--text)}.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.page{display:none;height:calc(100vh - 51px);overflow-y:auto;padding:28px 40px 48px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.page::-webkit-scrollbar{width:6px}.page::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.page.active{display:block}
+.page-title{font-family:'Playfair Display',serif;font-size:clamp(22px,3vw,36px);font-weight:800;margin-bottom:6px;background:linear-gradient(135deg,var(--text),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.page-sub{font-size:14px;color:var(--text-muted);margin-bottom:20px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:16px;position:relative}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:14px 14px 0 0;background:linear-gradient(90deg,var(--accent),transparent)}
+canvas.graph{border-radius:10px;background:#0a0c12;display:block;margin:0 auto}
+.eq-grid{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+.eq-pill{padding:7px 14px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;border:2px solid var(--border);color:var(--text-muted);background:transparent;transition:all .2s;user-select:none}
+.eq-pill:hover{border-color:var(--accent);color:var(--text);transform:translateY(-1px)}
+.eq-pill.active{border-color:var(--accent);background:var(--accent-glow);color:var(--accent);font-weight:600}
+.info-strip{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}
+.info-chip{background:var(--surface2);border-radius:8px;padding:7px 14px;font-size:13px}
+.info-chip b{margin-right:5px}
+.gen-controls{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0;align-items:center}
+.gen-btn{padding:9px 20px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:all .2s}
+.gen-btn:hover{transform:translateY(-2px)}
+.gen-btn.primary{background:var(--accent);color:#0f1117;box-shadow:0 4px 20px rgba(108,159,255,0.3)}
+.gen-btn.secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.gen-btn.reveal{background:var(--green-glow);color:var(--green);border:1px solid rgba(93,232,160,0.25)}
+.gen-btn.warn{background:var(--orange-glow);color:var(--orange);border:1px solid rgba(255,176,102,0.25)}
+.degree-select{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer}
+.factored-display{background:var(--surface2);border-radius:12px;padding:18px 24px;margin:14px 0;font-size:20px;text-align:center;min-height:60px;display:flex;align-items:center;justify-content:center;border-left:4px solid var(--purple)}
+.view-btn{padding:8px 18px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;border:2px solid var(--border);color:var(--text-muted);background:transparent;transition:all .2s;user-select:none}
+.view-btn:hover{transform:translateY(-1px)}.view-btn.active{border-color:var(--accent);background:var(--accent-glow);color:var(--accent)}
+.ineq-display{background:var(--surface2);border-radius:12px;padding:18px 24px;margin:14px 0;font-size:22px;text-align:center;min-height:60px;display:flex;align-items:center;justify-content:center;border-left:4px solid var(--red)}
+.sol-interval{background:var(--surface2);border-radius:12px;padding:18px 24px;margin:14px 0;font-size:20px;text-align:center;border-left:4px solid var(--green);display:none}
+</style>
+</head>
+<body>
+<div class="tab-bar">
+  <div class="tab active" onclick="switchPage(0)">Group Equations</div>
+  <div class="tab" onclick="switchPage(1)">Sketch Generator</div>
+  <div class="tab" onclick="switchPage(2)">Inequalities</div>
+</div>
+
+<!-- PAGE 1 -->
+<div class="page active" id="page-0">
+  <div class="page-title">Polynomial Behavior</div>
+  <div class="page-sub">Select an equation. Use Zeros View to examine local behavior, End Behavior View to see the big picture.</div>
+  <div class="eq-grid" id="eqGrid"></div>
+  <div class="factored-display" id="eqDisplay" style="border-left-color:var(--accent);font-size:22px;"></div>
+  <div style="display:flex;gap:10px;margin:12px 0;flex-wrap:wrap;">
+    <button class="view-btn active" id="viewZoom" onclick="setView('zoom')">🔍 Zeros View</button>
+    <button class="view-btn" id="viewWide" onclick="setView('wide')">↔ End Behavior View</button>
+    <span style="width:20px;"></span>
+    <button class="view-btn active" id="zeroToggle" onclick="toggleZeros()" style="border-color:var(--yellow);color:var(--yellow);">● Zeros</button>
+    <button class="view-btn active" id="extToggle" onclick="toggleExtrema()" style="border-color:var(--green);color:var(--green);">● Extrema</button>
+  </div>
+  <div class="card" style="padding:16px;"><canvas id="groupCanvas" class="graph" width="820" height="500"></canvas></div>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;margin:12px 0;">
+    <button class="gen-btn reveal" onclick="toggleGroupInfo()" id="groupInfoBtn">▶ Show Analysis</button>
+  </div>
+  <div class="info-strip" id="infoStrip" style="display:none;"></div>
+</div>
+
+<!-- PAGE 2 -->
+<div class="page" id="page-1">
+  <div class="page-title">Sketch Generator</div>
+  <div class="page-sub">Generate a random factored polynomial. Sketch on the blank axes, then reveal.</div>
+  <div class="gen-controls">
+    <label style="font-size:13px;color:var(--text-muted);">Max Degree:</label>
+    <select class="degree-select" id="maxDegree"><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5" selected>5</option></select>
+    <button class="gen-btn primary" onclick="generatePoly()">Generate New</button>
+    <button class="gen-btn warn" id="showInfoBtn2" onclick="toggleGenInfo()" style="display:none;">▶ Show Zero Analysis</button>
+    <button class="gen-btn reveal" id="revealBtn" onclick="revealGraph()" style="display:none;">▶ Reveal Graph</button>
+    <button class="gen-btn secondary" id="resetSketchBtn" onclick="resetSketch()" style="display:none;">↺ Reset</button>
+  </div>
+  <div class="factored-display" id="factoredDisplay" style="color:var(--text-muted);font-size:16px;">Press "Generate New" to create a polynomial.</div>
+  <div class="info-strip" id="genInfo" style="display:none;"></div>
+  <div class="card" style="padding:16px;" id="genGraphCard"><canvas id="genCanvas" class="graph" width="820" height="500"></canvas></div>
+</div>
+
+<!-- PAGE 3 -->
+<div class="page" id="page-2">
+  <div class="page-title">Polynomial Inequalities</div>
+  <div class="page-sub">Generate a factored inequality. Identify zeros, sketch, determine sign regions, then reveal the solution.</div>
+  <div class="gen-controls">
+    <label style="font-size:13px;color:var(--text-muted);">Max Degree:</label>
+    <select class="degree-select" id="ineqMaxDeg"><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5" selected>5</option></select>
+    <button class="gen-btn primary" onclick="generateIneq()">Generate New</button>
+    <button class="gen-btn warn" id="ineqInfoBtn" onclick="toggleIneqInfo()" style="display:none;">▶ Show Zeros &amp; Behavior</button>
+    <button class="gen-btn" id="ineqSignBtn" onclick="toggleSignChart()" style="display:none;background:var(--purple-glow);color:var(--purple);border:1px solid rgba(177,140,255,0.25);">▶ Show Sign Chart</button>
+    <button class="gen-btn reveal" id="ineqRevealBtn" onclick="revealIneq()" style="display:none;">▶ Reveal Graph &amp; Solution</button>
+    <button class="gen-btn secondary" id="ineqResetBtn" onclick="resetIneq()" style="display:none;">↺ Reset</button>
+  </div>
+  <div class="ineq-display" id="ineqDisplay" style="color:var(--text-muted);font-size:16px;">Press "Generate New" to create an inequality.</div>
+  <div class="info-strip" id="ineqInfo" style="display:none;"></div>
+  <div class="card" style="padding:16px;display:none;" id="signChartCard"><canvas id="signCanvas" class="graph" width="820" height="180"></canvas></div>
+  <div class="card" style="padding:16px;" id="ineqGraphCard"><canvas id="ineqCanvas" class="graph" width="820" height="500"></canvas></div>
+  <div class="sol-interval" id="ineqSolution"></div>
+</div>
+
+<script>
+function switchPage(i){document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('active',j===i));document.querySelectorAll('.page').forEach((p,j)=>p.classList.toggle('active',j===i));if(i===0)drawGroupGraph();}
+
+// ═══ GRAPH ENGINE ═══
+function graphSetup(cid,xMin,xMax,yMin,yMax,opts={}){
+  const c=document.getElementById(cid);if(!c)return null;const ctx=c.getContext('2d');const W=c.width,H=c.height;
+  const tx=x=>(x-xMin)/(xMax-xMin)*W,ty=y=>H-(y-yMin)/(yMax-yMin)*H;
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#0a0c12';ctx.fillRect(0,0,W,H);
+  const gc=opts.gridColor||'rgba(255,255,255,0.1)',ac=opts.axisColor||'rgba(255,255,255,0.6)',lc=opts.labelColor||'rgba(255,255,255,0.6)';
+  ctx.strokeStyle=gc;ctx.lineWidth=1;
+  const xs=Math.max(1,Math.ceil((xMax-xMin)/20)),ys=Math.max(1,Math.ceil((yMax-yMin)/20));
+  for(let i=Math.ceil(xMin/xs)*xs;i<=xMax;i+=xs){ctx.beginPath();ctx.moveTo(tx(i),0);ctx.lineTo(tx(i),H);ctx.stroke();}
+  for(let i=Math.ceil(yMin/ys)*ys;i<=yMax;i+=ys){ctx.beginPath();ctx.moveTo(0,ty(i));ctx.lineTo(W,ty(i));ctx.stroke();}
+  ctx.strokeStyle=ac;ctx.lineWidth=2;
+  if(yMin<=0&&yMax>=0){ctx.beginPath();ctx.moveTo(0,ty(0));ctx.lineTo(W,ty(0));ctx.stroke();}
+  if(xMin<=0&&xMax>=0){ctx.beginPath();ctx.moveTo(tx(0),0);ctx.lineTo(tx(0),H);ctx.stroke();}
+  ctx.fillStyle=lc;ctx.font='12px "DM Sans",sans-serif';ctx.textAlign='center';ctx.textBaseline='top';
+  for(let i=Math.ceil(xMin/xs)*xs;i<=xMax;i+=xs){if(i===0)continue;ctx.fillText(i,tx(i),ty(0)+4);}
+  ctx.textAlign='right';ctx.textBaseline='middle';
+  for(let i=Math.ceil(yMin/ys)*ys;i<=yMax;i+=ys){if(i===0)continue;ctx.fillText(i,tx(0)-6,ty(i));}
+  return{ctx,W,H,tx,ty,xMin,xMax,yMin,yMax};
+}
+const neonOpts={gridColor:'rgba(57,255,20,0.15)',axisColor:'rgba(57,255,20,0.6)',labelColor:'rgba(57,255,20,0.6)'};
+function drawBlankAxes(cid){graphSetup(cid,-7,7,-10,10,neonOpts);}
+function plotFunction(g,fn,color,x0,x1){const{ctx,tx,ty,H}=g;ctx.strokeStyle=color;ctx.lineWidth=3;ctx.shadowColor=color;ctx.shadowBlur=8;ctx.beginPath();let s=false;const st=(x1-x0)/1000;for(let x=x0;x<=x1;x+=st){const y=fn(x);if(isNaN(y)||!isFinite(y)){s=false;continue;}const px=tx(x),py=ty(y);if(py<-80||py>H+80){s=false;continue;}if(!s){ctx.moveTo(px,py);s=true;}else ctx.lineTo(px,py);}ctx.stroke();ctx.shadowBlur=0;}
+function findZeros(fn,a,b){const z=[];const st=0.005;for(let x=a;x<b;x+=st){const y1=fn(x),y2=fn(x+st);if(y1*y2<0){let lo=x,hi=x+st;for(let i=0;i<40;i++){const m=(lo+hi)/2;if(fn(lo)*fn(m)<0)hi=m;else lo=m;}const r=Math.round((lo+hi)/2*1000)/1000;if(!z.length||Math.abs(z[z.length-1]-r)>0.03)z.push(r);}else if(Math.abs(y1)<0.003){const r=Math.round(x*1000)/1000;if(!z.length||Math.abs(z[z.length-1]-r)>0.03)z.push(r);}}return z;}
+function findExtrema(fn,a,b){const e=[];const st=0.01;for(let x=a+st;x<b-st;x+=st){const y0=fn(x-st),y1=fn(x),y2=fn(x+st);if(y1>y0&&y1>y2)e.push({x:+(x.toFixed(2)),y:+(y1.toFixed(2)),type:'max'});if(y1<y0&&y1<y2)e.push({x:+(x.toFixed(2)),y:+(y1.toFixed(2)),type:'min'});}return e;}
+function autoScale(fn,a,b){let v=[];for(let x=a;x<=b;x+=0.05)v.push(fn(x));v.sort((a,b)=>a-b);let lo=v[Math.floor(v.length*0.02)],hi=v[Math.floor(v.length*0.98)];const p=(hi-lo)*0.15;lo=Math.floor(lo-p);hi=Math.ceil(hi+p);if(hi-lo<6){lo-=3;hi+=3;}return{yMin:lo,yMax:hi};}
+
+// ═══ PAGE 1 ═══
+const equations=[
+  {label:'Deg 2',tex:'y=1.5x^2-1.5x-9',fn:x=>1.5*x*x-1.5*x-9,degree:2,lc:1.5},
+  {label:'Deg 3 (+)',tex:'y=x^3-4x^2+x+6',fn:x=>x**3-4*x*x+x+6,degree:3,lc:1},
+  {label:'Deg 3 (−)',tex:'y=-2x^3-6x^2+2x+6',fn:x=>-2*x**3-6*x*x+2*x+6,degree:3,lc:-2},
+  {label:'Deg 4 (+)',tex:'y=2x^4+2x^3-14x^2-2x+12',fn:x=>2*x**4+2*x**3-14*x*x-2*x+12,degree:4,lc:2},
+  {label:'Deg 4 (−)',tex:'y=-x^4+0.5x^3+4.5x^2-2x-2',fn:x=>-(x**4)+.5*x**3+4.5*x*x-2*x-2,degree:4,lc:-1},
+  {label:'Deg 5 (−)',tex:'y=-x^5-3x^4+5x^3+15x^2-4x-12',fn:x=>-(x**5)-3*x**4+5*x**3+15*x*x-4*x-12,degree:5,lc:-1},
+  {label:'Deg 5 (+)',tex:'y=2x^5+2x^4-38x^3-2x^2+180x-144',fn:x=>2*x**5+2*x**4-38*x**3-2*x*x+180*x-144,degree:5,lc:2},
+  {label:'Deg 6',tex:'y=x^6-14x^4+49x^2-36',fn:x=>x**6-14*x**4+49*x*x-36,degree:6,lc:1},
+];
+let activeEq=0,viewMode='zoom',groupInfoVisible=false,showZeros=true,showExtrema=true;
+const eqGrid=document.getElementById('eqGrid');
+equations.forEach((eq,i)=>{const p=document.createElement('button');p.className='eq-pill'+(i===0?' active':'');p.textContent=eq.label;p.onclick=()=>{activeEq=i;document.querySelectorAll('.eq-pill').forEach((b,j)=>b.classList.toggle('active',j===i));groupInfoVisible=false;document.getElementById('groupInfoBtn').textContent='▶ Show Analysis';document.getElementById('infoStrip').style.display='none';drawGroupGraph();};eqGrid.appendChild(p);});
+function setView(m){viewMode=m;document.getElementById('viewZoom').classList.toggle('active',m==='zoom');document.getElementById('viewWide').classList.toggle('active',m==='wide');drawGroupGraph();}
+function toggleZeros(){showZeros=!showZeros;document.getElementById('zeroToggle').classList.toggle('active',showZeros);drawGroupGraph();}
+function toggleExtrema(){showExtrema=!showExtrema;document.getElementById('extToggle').classList.toggle('active',showExtrema);drawGroupGraph();}
+function toggleGroupInfo(){groupInfoVisible=!groupInfoVisible;document.getElementById('infoStrip').style.display=groupInfoVisible?'flex':'none';document.getElementById('groupInfoBtn').textContent=groupInfoVisible?'✓ Analysis Shown':'▶ Show Analysis';drawGroupGraph();if(groupInfoVisible&&window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise([document.getElementById('infoStrip')]);}
+function drawGroupGraph(){
+  const eq=equations[activeEq];document.getElementById('eqDisplay').innerHTML=`\\(${eq.tex}\\)`;if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise([document.getElementById('eqDisplay')]);
+  let xMin,xMax,yMin,yMax;
+  if(viewMode==='wide'){
+    xMin=-10;xMax=10;
+    const s=autoScale(eq.fn,xMin,xMax);yMin=s.yMin;yMax=s.yMax;
+  } else {
+    // Zeros view: find zeros first, then fit axes tightly around them and extrema
+    const zerosScan=findZeros(eq.fn,-8,8);
+    const extremaScan=findExtrema(eq.fn,-8,8);
+    if(zerosScan.length>=2){
+      const zMin=Math.min(...zerosScan),zMax=Math.max(...zerosScan);
+      const pad=(zMax-zMin)*0.4;
+      xMin=Math.floor(zMin-pad);xMax=Math.ceil(zMax+pad);
+    } else {
+      xMin=-5;xMax=5;
+    }
+    // Y range: fit around the extrema values in the x window
+    const relevantExtrema=extremaScan.filter(e=>e.x>=xMin&&e.x<=xMax);
+    if(relevantExtrema.length){
+      const eYs=relevantExtrema.map(e=>e.y);
+      const eyMin=Math.min(...eYs),eyMax=Math.max(...eYs);
+      const yPad=Math.max((eyMax-eyMin)*0.3,3);
+      yMin=Math.floor(eyMin-yPad);yMax=Math.ceil(eyMax+yPad);
+    } else {
+      const s=autoScale(eq.fn,xMin,xMax);yMin=s.yMin;yMax=s.yMax;
+    }
+    // Ensure zeros are visible (y=0 line in view)
+    if(yMin>0)yMin=-2;if(yMax<0)yMax=2;
+  }
+  const g=graphSetup('groupCanvas',xMin,xMax,yMin,yMax);if(!g)return;
+  plotFunction(g,eq.fn,'#6c9fff',xMin,xMax);
+  const zeros=findZeros(eq.fn,xMin,xMax),extrema=findExtrema(eq.fn,xMin,xMax);
+  if(showZeros){zeros.forEach(z=>{const y=eq.fn(z);g.ctx.fillStyle='#ffe566';g.ctx.shadowColor='#ffe566';g.ctx.shadowBlur=10;g.ctx.beginPath();g.ctx.arc(g.tx(z),g.ty(y),7,0,Math.PI*2);g.ctx.fill();g.ctx.shadowBlur=0;g.ctx.fillStyle='#0a0c12';g.ctx.beginPath();g.ctx.arc(g.tx(z),g.ty(y),3,0,Math.PI*2);g.ctx.fill();g.ctx.fillStyle='#ffe566';g.ctx.font='bold 12px "JetBrains Mono",monospace';g.ctx.textAlign='center';g.ctx.textBaseline='bottom';g.ctx.fillText(z%1===0?''+z:z.toFixed(2),g.tx(z),g.ty(y)-12);});}
+  if(showExtrema){extrema.forEach(e=>{const c=e.type==='max'?'#5de8a0':'#ff6b8a';g.ctx.fillStyle=c;g.ctx.shadowColor=c;g.ctx.shadowBlur=10;g.ctx.beginPath();g.ctx.arc(g.tx(e.x),g.ty(e.y),6,0,Math.PI*2);g.ctx.fill();g.ctx.shadowBlur=0;g.ctx.fillStyle='#0a0c12';g.ctx.beginPath();g.ctx.arc(g.tx(e.x),g.ty(e.y),2,0,Math.PI*2);g.ctx.fill();g.ctx.fillStyle=c;g.ctx.font='11px "JetBrains Mono",monospace';g.ctx.textAlign='center';g.ctx.textBaseline=e.type==='max'?'bottom':'top';g.ctx.fillText(`(${e.x}, ${e.y})`,g.tx(e.x),g.ty(e.y)+(e.type==='max'?-10:14));});}
+  const eq2=equations[activeEq];
+  const{L,R,LyPlain,RyPlain}=endBeh(eq2.lc,eq2.degree);
+  // Draw tail arrows on the graph in wide view when analysis is visible
+  if(viewMode==='wide'&&groupInfoVisible){
+    const arrowColor='rgba(255,229,102,0.9)';
+    const ctx=g.ctx;
+    // Left tail: arrow pointing in direction x→-∞
+    const leftX=g.tx(xMin+0.5),leftY=g.ty(eq2.fn(xMin+0.5));
+    const leftY2=g.ty(eq2.fn(xMin+1.2));
+    const leftYClamp=Math.max(6,Math.min(g.H-6,leftY));
+    // Right tail: arrow pointing in direction x→+∞
+    const rightX=g.tx(xMax-0.5),rightY=g.ty(eq2.fn(xMax-0.5));
+    const rightYClamp=Math.max(6,Math.min(g.H-6,rightY));
+
+    function drawArrowHead(cx,cy,angle,color){
+      ctx.save();ctx.translate(cx,cy);ctx.rotate(angle);
+      ctx.fillStyle=color;ctx.shadowColor=color;ctx.shadowBlur=8;
+      ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-14,-6);ctx.lineTo(-14,6);ctx.closePath();ctx.fill();
+      ctx.shadowBlur=0;ctx.restore();
+    }
+
+    // LEFT tail label: x→-∞, y→LyPlain
+    const lyLeft=LyPlain;
+    const lLabelY=lyLeft==='+∞'?Math.min(leftYClamp,30):Math.max(leftYClamp,g.H-30);
+    ctx.font='bold 13px "JetBrains Mono",monospace';
+    ctx.fillStyle=arrowColor;ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText(`x→-∞`,12,g.H-44);
+    ctx.fillText(`y→${lyLeft}`,12,g.H-26);
+
+    // RIGHT tail label: x→+∞, y→RyPlain
+    const lyRight=RyPlain;
+    ctx.textAlign='right';ctx.textBaseline='middle';
+    ctx.fillText(`x→+∞`,g.W-10,g.H-44);
+    ctx.fillText(`y→${lyRight}`,g.W-10,g.H-26);
+
+    // Arrow heads at the curve ends
+    // Left end — angle of curve going left
+    const lDx=g.tx(xMin+0.5)-g.tx(xMin+1.2);
+    const lDy=g.ty(eq2.fn(xMin+0.5))-g.ty(eq2.fn(xMin+1.2));
+    const lAng=Math.atan2(lDy,lDx);
+    drawArrowHead(Math.max(8,Math.min(g.W-8,g.tx(xMin+0.2))),Math.max(8,Math.min(g.H-8,g.ty(Math.max(yMin*0.92,Math.min(yMax*0.92,eq2.fn(xMin+0.2)))))),lAng,arrowColor);
+
+    // Right end — angle of curve going right
+    const rDx=g.tx(xMax-0.5)-g.tx(xMax-1.2);
+    const rDy=g.ty(eq2.fn(xMax-0.5))-g.ty(eq2.fn(xMax-1.2));
+    const rAng=Math.atan2(-rDy,-rDx);
+    drawArrowHead(Math.max(8,Math.min(g.W-8,g.tx(xMax-0.2))),Math.max(8,Math.min(g.H-8,g.ty(Math.max(yMin*0.92,Math.min(yMax*0.92,eq2.fn(xMax-0.2)))))),rAng,arrowColor);
+  }
+
+  document.getElementById('infoStrip').innerHTML=`<div class="info-chip"><b style="color:var(--purple);">Degree:</b> ${eq2.degree}</div><div class="info-chip"><b style="color:var(--orange);">LC:</b> ${eq2.lc}</div><div class="info-chip"><b>As \\(${L}\\)</b></div><div class="info-chip"><b>As \\(${R}\\)</b></div><div class="info-chip"><b style="color:var(--yellow);">Zeros:</b> ${zeros.length}</div><div class="info-chip"><b style="color:var(--green);">Turning Pts:</b> ${extrema.length}</div>`;
+  if(groupInfoVisible&&window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise([document.getElementById('infoStrip')]);
+}
+drawGroupGraph();
+
+// ═══ PAGE 2 ═══
+let currentPoly=null,genInfoVisible=false;
+function randInt(a,b){return Math.floor(Math.random()*(b-a+1))+a;}function randChoice(a){return a[Math.floor(Math.random()*a.length)];}
+function buildPoly(maxDeg){const deg=randInt(2,maxDeg);const factors=[];let td=0;const used=new Set();const roots=[-4,-3,-2,-1,0,1,2,3,4];while(td<deg){const rem=deg-td;const av=roots.filter(r=>!used.has(r));if(!av.length)break;const root=randChoice(av);used.add(root);let mult=1;if(rem>=3&&Math.random()<.2)mult=3;else if(rem>=2&&Math.random()<.3)mult=2;if(mult>rem)mult=rem;factors.push({root,mult});td+=mult;}const lcO=[-3,-2,-1,-.5,.5,1,2,3];const lc=randChoice(lcO);const fn=x=>{let r=lc;for(const f of factors)r*=Math.pow(x-f.root,f.mult);return r;};let tex='';if(lc===-1)tex='-';else if(lc===1)tex='';else if(lc===-.5)tex='-\\tfrac{1}{2}';else if(lc===.5)tex='\\tfrac{1}{2}';else tex=''+lc;factors.forEach(f=>{let s='';if(f.root===0)s='x';else if(f.root>0)s=`(x-${f.root})`;else s=`(x+${Math.abs(f.root)})`;if(f.mult>1)s+=`^{${f.mult}}`;tex+=s;});return{fn,factors,lc,degree:td,tex};}
+function endBeh(lc,deg){
+  const Ly=lc>0?(deg%2===0?'+\\infty':'-\\infty'):(deg%2===0?'-\\infty':'+\\infty');
+  const Ry=lc>0?'+\\infty':'-\\infty';
+  const Ltext=`x\\to-\\infty,\\;y\\to${Ly}`;
+  const Rtext=`x\\to+\\infty,\\;y\\to${Ry}`;
+  // Plain text versions for canvas
+  const LyPlain=lc>0?(deg%2===0?'+∞':'-∞'):(deg%2===0?'-∞':'+∞');
+  const RyPlain=lc>0?'+∞':'-∞';
+  return{L:Ltext,R:Rtext,LyPlain,RyPlain};
+}
+function zeroChips(factors){let h='';factors.forEach(f=>{const c=f.mult===1?'var(--accent)':f.mult===2?'var(--orange)':'var(--red)';const b=f.mult===1?'crosses':f.mult===2?'bounces':'inflects';h+=`<div class="info-chip" style="border-left:3px solid ${c};"><b style="color:${c};">x=${f.root}</b> (mult ${f.mult} — ${b})</div>`;});return h;}
+
+function generatePoly(){genInfoVisible=false;document.getElementById('genInfo').style.display='none';document.getElementById('showInfoBtn2').textContent='▶ Show Zero Analysis';const md=parseInt(document.getElementById('maxDegree').value);currentPoly=buildPoly(md);document.getElementById('factoredDisplay').innerHTML=`\\[y = ${currentPoly.tex}\\]`;if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise([document.getElementById('factoredDisplay')]);const{L,R}=endBeh(currentPoly.lc,currentPoly.degree);document.getElementById('genInfo').innerHTML=`<div class="info-chip"><b style="color:var(--purple);">Degree:</b> ${currentPoly.degree}</div><div class="info-chip"><b style="color:var(--orange);">LC:</b> ${currentPoly.lc}</div><div class="info-chip">As \\(${L}\\)</div><div class="info-chip">As \\(${R}\\)</div>${zeroChips(currentPoly.factors)}`;document.getElementById('showInfoBtn2').style.display='';document.getElementById('revealBtn').style.display='';document.getElementById('resetSketchBtn').style.display='';drawBlankAxes('genCanvas');}
+function toggleGenInfo(){genInfoVisible=!genInfoVisible;document.getElementById('genInfo').style.display=genInfoVisible?'flex':'none';document.getElementById('showInfoBtn2').textContent=genInfoVisible?'✓ Analysis Shown':'▶ Show Zero Analysis';}
+function revealGraph(){if(!currentPoly)return;const p=currentPoly;const rs=p.factors.map(f=>f.root);const xMin=Math.min(...rs)-2,xMax=Math.max(...rs)+2;const{yMin,yMax}=autoScale(p.fn,xMin,xMax);const g=graphSetup('genCanvas',xMin,xMax,yMin,yMax,neonOpts);if(!g)return;plotFunction(g,p.fn,'#b18cff',xMin,xMax);p.factors.forEach(f=>{const x=f.root,y=p.fn(x);const c=f.mult===1?'#6c9fff':f.mult===2?'#ffb066':'#ff6b8a';g.ctx.fillStyle=c;g.ctx.shadowColor=c;g.ctx.shadowBlur=10;g.ctx.beginPath();g.ctx.arc(g.tx(x),g.ty(y),7,0,Math.PI*2);g.ctx.fill();g.ctx.shadowBlur=0;g.ctx.fillStyle='#0a0c12';g.ctx.beginPath();g.ctx.arc(g.tx(x),g.ty(y),3,0,Math.PI*2);g.ctx.fill();const lb=f.mult===1?'cross':f.mult===2?'bounce':'inflect';g.ctx.fillStyle=c;g.ctx.font='bold 11px "JetBrains Mono",monospace';g.ctx.textAlign='center';g.ctx.textBaseline='bottom';g.ctx.fillText(`x=${x}`,g.tx(x),g.ty(y)-14);g.ctx.font='10px "DM Sans",sans-serif';g.ctx.fillText(lb,g.tx(x),g.ty(y)-3);});document.getElementById('revealBtn').style.display='none';}
+function resetSketch(){drawBlankAxes('genCanvas');document.getElementById('revealBtn').style.display='';}
+
+// ═══ PAGE 3 ═══
+let currentIneq=null,ineqInfoVisible=false,signChartVisible=false;
+
+function generateIneq(){
+  ineqInfoVisible=false;signChartVisible=false;
+  document.getElementById('ineqInfo').style.display='none';
+  document.getElementById('ineqInfoBtn').textContent='▶ Show Zeros & Behavior';
+  document.getElementById('ineqSolution').style.display='none';
+  document.getElementById('signChartCard').style.display='none';
+  document.getElementById('ineqSignBtn').textContent='▶ Show Sign Chart';
+  const md=parseInt(document.getElementById('ineqMaxDeg').value);
+  const poly=buildPoly(md);
+  const iq=randChoice(['>0','\\ge 0','<0','\\le 0']);
+  currentIneq={...poly,ineqType:iq,ineqClean:iq.replace(/\\/g,'')};
+  document.getElementById('ineqDisplay').innerHTML=`\\[${poly.tex} ${iq}\\]`;
+  if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise([document.getElementById('ineqDisplay')]);
+  const{L,R}=endBeh(poly.lc,poly.degree);
+  document.getElementById('ineqInfo').innerHTML=`<div class="info-chip"><b style="color:var(--purple);">Degree:</b> ${poly.degree}</div><div class="info-chip"><b style="color:var(--orange);">LC:</b> ${poly.lc}</div><div class="info-chip">As \\(${L}\\)</div><div class="info-chip">As \\(${R}\\)</div>${zeroChips(poly.factors.sort((a,b)=>a.root-b.root))}`;
+  document.getElementById('ineqInfoBtn').style.display='';
+  document.getElementById('ineqSignBtn').style.display='';
+  document.getElementById('ineqRevealBtn').style.display='';
+  document.getElementById('ineqResetBtn').style.display='';
+  drawBlankAxes('ineqCanvas');
+}
+
+function toggleIneqInfo(){ineqInfoVisible=!ineqInfoVisible;document.getElementById('ineqInfo').style.display=ineqInfoVisible?'flex':'none';document.getElementById('ineqInfoBtn').textContent=ineqInfoVisible?'✓ Analysis Shown':'▶ Show Zeros & Behavior';}
+
+function toggleSignChart(){
+  signChartVisible=!signChartVisible;
+  document.getElementById('signChartCard').style.display=signChartVisible?'':'none';
+  document.getElementById('ineqSignBtn').textContent=signChartVisible?'✓ Sign Chart Shown':'▶ Show Sign Chart';
+  if(signChartVisible&&currentIneq) drawSignChart();
+}
+
+function drawSignChart(){
+  if(!currentIneq) return;
+  const p=currentIneq;
+  const c=document.getElementById('signCanvas');if(!c)return;
+  const ctx=c.getContext('2d');const W=c.width,H=c.height;
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#0a0c12';ctx.fillRect(0,0,W,H);
+
+  const sortedRoots=[...new Set(p.factors.map(f=>f.root))].sort((a,b)=>a-b);
+  const pad=60; // padding left/right
+  const lineY=H*0.55; // number line vertical position
+  const rMin=sortedRoots[0],rMax=sortedRoots[sortedRoots.length-1];
+  const span=rMax-rMin||2;
+  const xMin=rMin-span*0.35,xMax=rMax+span*0.35;
+  const tx=x=>pad+(x-xMin)/(xMax-xMin)*(W-2*pad);
+
+  // Draw number line
+  ctx.strokeStyle='rgba(255,255,255,0.7)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(pad-20,lineY);ctx.lineTo(W-pad+20,lineY);ctx.stroke();
+  // Arrow heads
+  ctx.beginPath();ctx.moveTo(pad-20,lineY);ctx.lineTo(pad-10,lineY-5);ctx.lineTo(pad-10,lineY+5);ctx.closePath();ctx.fillStyle='rgba(255,255,255,0.7)';ctx.fill();
+  ctx.beginPath();ctx.moveTo(W-pad+20,lineY);ctx.lineTo(W-pad+10,lineY-5);ctx.lineTo(W-pad+10,lineY+5);ctx.closePath();ctx.fill();
+
+  // Draw zero points on number line
+  sortedRoots.forEach(r=>{
+    ctx.fillStyle='#ffe566';ctx.shadowColor='#ffe566';ctx.shadowBlur=8;
+    ctx.beginPath();ctx.arc(tx(r),lineY,7,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#0a0c12';ctx.beginPath();ctx.arc(tx(r),lineY,3,0,Math.PI*2);ctx.fill();
+    // Label below
+    ctx.fillStyle='#ffe566';ctx.font='bold 14px "JetBrains Mono",monospace';
+    ctx.textAlign='center';ctx.textBaseline='top';
+    ctx.fillText(''+r,tx(r),lineY+14);
+  });
+
+  // Test sign in each region and draw + or −
+  const testPoints=[];
+  testPoints.push(sortedRoots[0]-1);
+  for(let i=0;i<sortedRoots.length-1;i++) testPoints.push((sortedRoots[i]+sortedRoots[i+1])/2);
+  testPoints.push(sortedRoots[sortedRoots.length-1]+1);
+
+  // Region midpoints for label placement
+  const regionMids=[];
+  regionMids.push((tx(xMin)+tx(sortedRoots[0]))/2); // left of first zero (in pixel coords)
+  for(let i=0;i<sortedRoots.length-1;i++) regionMids.push((tx(sortedRoots[i])+tx(sortedRoots[i+1]))/2);
+  regionMids.push((tx(sortedRoots[sortedRoots.length-1])+tx(xMax))/2); // right of last zero
+
+  // Determine if inequality wants positive or negative regions
+  const wantPos=p.ineqClean.includes('>');
+  const inclZero=p.ineqClean.includes('ge')||p.ineqClean.includes('le');
+
+  testPoints.forEach((tp,i)=>{
+    const val=p.fn(tp);
+    const isPos=val>0;
+    const sign=isPos?'+':'−';
+    const signY=isPos? lineY-30 : lineY+38;
+    const color=isPos?'#5de8a0':'#ff6b8a';
+
+    // Check if this region is part of the solution
+    const inSolution=wantPos?(isPos):(val<0);
+
+    // Draw sign symbol
+    ctx.font='bold 28px "DM Sans",sans-serif';
+    ctx.fillStyle=color;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(sign,regionMids[i],signY);
+
+    // Highlight solution regions with a subtle bar
+    if(inSolution){
+      const leftEdge = i===0 ? pad-10 : tx(sortedRoots[i-1])+10;
+      const rightEdge = i===testPoints.length-1 ? W-pad+10 : tx(sortedRoots[i])-10;
+      ctx.fillStyle='rgba(57,255,20,0.08)';
+      ctx.fillRect(leftEdge,lineY-45,rightEdge-leftEdge,90);
+    }
+  });
+
+  // Label ends
+  ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='12px "DM Sans",sans-serif';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('−∞',pad-20,lineY+35);
+  ctx.fillText('+∞',W-pad+20,lineY+35);
+}
+
+function revealIneq(){
+  if(!currentIneq)return;const p=currentIneq;
+  const rs=p.factors.map(f=>f.root);const xMin=Math.min(...rs)-2,xMax=Math.max(...rs)+2;
+  const{yMin,yMax}=autoScale(p.fn,xMin,xMax);
+  const g=graphSetup('ineqCanvas',xMin,xMax,yMin,yMax,neonOpts);if(!g)return;
+  const wantPos=p.ineqClean.includes('>'),inclZero=p.ineqClean.includes('ge')||p.ineqClean.includes('le');
+  const positive=wantPos;const step=(xMax-xMin)/800;
+  for(let x=xMin;x<=xMax;x+=step){const y=p.fn(x);const inSol=positive?(inclZero?y>=0:y>0):(inclZero?y<=0:y<0);if(inSol){const cy=Math.max(yMin,Math.min(yMax,y));g.ctx.fillStyle='rgba(57,255,20,0.1)';const px=g.tx(x),py0=g.ty(0),pyV=g.ty(cy);const top=Math.min(py0,pyV),h=Math.abs(py0-pyV);g.ctx.fillRect(px,top,g.W/800+1,h||1);}}
+  plotFunction(g,p.fn,'#b18cff',xMin,xMax);
+  p.factors.sort((a,b)=>a.root-b.root).forEach(f=>{const x=f.root,y=p.fn(x);const c=f.mult===1?'#6c9fff':f.mult===2?'#ffb066':'#ff6b8a';g.ctx.fillStyle=c;g.ctx.shadowColor=c;g.ctx.shadowBlur=10;g.ctx.beginPath();g.ctx.arc(g.tx(x),g.ty(y),7,0,Math.PI*2);g.ctx.fill();g.ctx.shadowBlur=0;g.ctx.fillStyle='#0a0c12';g.ctx.beginPath();g.ctx.arc(g.tx(x),g.ty(y),3,0,Math.PI*2);g.ctx.fill();g.ctx.fillStyle=c;g.ctx.font='bold 12px "JetBrains Mono",monospace';g.ctx.textAlign='center';g.ctx.textBaseline='bottom';g.ctx.fillText(''+x,g.tx(x),g.ty(y)-10);});
+  // Solution intervals
+  const sr=[...new Set(p.factors.map(f=>f.root))].sort((a,b)=>a-b);const tp=[];tp.push(sr[0]-1);for(let i=0;i<sr.length-1;i++)tp.push((sr[i]+sr[i+1])/2);tp.push(sr[sr.length-1]+1);
+  const sp=[];const regions=[];regions.push({l:'-\\infty',r:sr[0],tv:p.fn(tp[0])});for(let i=0;i<sr.length-1;i++)regions.push({l:sr[i],r:sr[i+1],tv:p.fn(tp[i+1])});regions.push({l:sr[sr.length-1],r:'\\infty',tv:p.fn(tp[tp.length-1])});
+  regions.forEach(r=>{const inS=positive?(r.tv>0):(r.tv<0);if(inS){const lb=(r.l==='-\\infty')?'(':(inclZero?'[':'(');const rb=(r.r==='\\infty')?')':(inclZero?']':')');sp.push(`${lb}${r.l},\\;${r.r}${rb}`);}});
+  if(inclZero){p.factors.forEach(f=>{if(f.mult===2){const x=f.root;const leftVal=p.fn(x-0.5),rightVal=p.fn(x+0.5);const bothSameSign=(positive&&leftVal<0&&rightVal<0)||(!positive&&leftVal>0&&rightVal>0);if(bothSameSign){const already=sp.some(s=>s.includes(''+x));if(!already)sp.push(`\\{${x}\\}`);}}})}
+  let sol=sp.join('\\cup ')||'\\emptyset';
+  document.getElementById('ineqSolution').innerHTML=`<b style="color:var(--green);margin-right:12px;">Solution:</b> \\(${sol}\\)`;document.getElementById('ineqSolution').style.display='';if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise([document.getElementById('ineqSolution')]);document.getElementById('ineqRevealBtn').style.display='none';
+  // Also show sign chart if not already visible
+  if(!signChartVisible){signChartVisible=true;document.getElementById('signChartCard').style.display='';document.getElementById('ineqSignBtn').textContent='✓ Sign Chart Shown';drawSignChart();}
+}
+
+function resetIneq(){drawBlankAxes('ineqCanvas');document.getElementById('ineqRevealBtn').style.display='';document.getElementById('ineqSolution').style.display='none';signChartVisible=false;document.getElementById('signChartCard').style.display='none';document.getElementById('ineqSignBtn').textContent='▶ Show Sign Chart';}
+
+window.addEventListener('load',()=>{drawBlankAxes('genCanvas');drawBlankAxes('ineqCanvas');if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise();});
+</script>
+</body>
+</html>
